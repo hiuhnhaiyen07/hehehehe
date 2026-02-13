@@ -4,52 +4,52 @@ from api import LocketAPI
 import json
 import time
 import requests
-import queue
-import threading
-import uuid
+hàng đợi nhập
+nhập luồng
+nhập uuid
 from datetime import datetime
 import dotenv
-import os
+nhập khẩu hệ điều hành
 
-app = Flask(__name__)
+ứng dụng = Flask ( __name__ )
 
-dotenv.load_dotenv()
+dotenv.load_dotenv ( )​
 
-# Initialize API and Auth
+# Khởi tạo API và xác thực
 subscription_ids = [
-    "locket_1600_1y",
-    "locket_199_1m",
-    "locket_199_1m_only",
-    "locket_3600_1y",
-    "locket_399_1m_only",
+    "locket_1600_1y" ,
+    "locket_199_1m" ,
+    "locket_199_1m_only" ,
+    "locket_3600_1y" ,
+    "locket_399_1m_only" ,
 ]
 
-auth = Auth(os.getenv("EMAIL"), os.getenv("PASSWORD"))
-try:
-    token = auth.get_token()
-    api = LocketAPI(token)
-except Exception as e:
-    print(f"Error initializing API: {e}")
-    api = None
+auth = Auth ( os. getenv ( "EMAIL" ) , os. getenv ( "PASSWORD" ) )
+thử :
+    token = auth.get_token ( )
+    api = LocketAPI ( token )
+ngoại trừ Ngoại lệ là e:
+    print ( f"Lỗi khi khởi tạo API: { e } " )
+    API = Không có
 
 
-# Queue Management System
-class QueueManager:
-    def __init__(self):
-        self.queue = queue.Queue()
-        self.lock = threading.Lock()
-        self.client_requests = {}  # client_id -> request data
-        self.processing_times = []  # Track processing times for estimates
-        self.current_processing = None
-        self.worker_thread = threading.Thread(target=self._process_queue, daemon=True)
-        self.worker_thread.start()
-        print("Queue manager initialized and worker thread started")
+# Hệ thống quản lý xếp hàng
+Lớp QueueManager:
+    def  __init__ ( self ) :
+        self.queue = queue.Queue ( )​
+        self.lock = threading.Lock ( )​
+        self.client_requests = { } # client_id -> dữ liệu yêu cầu  
+        self.processing_times = [ ] # Theo dõi thời gian xử lý cho các ước tính  
+        self.current_processing = None​
+        self.worker_thread = threading.Thread ( target = self._process_queue , daemon = True )
+        self.worker_thread.start ( )​​​
+        print ( "Trình quản lý hàng đợi đã được khởi tạo và luồng xử lý đã bắt đầu" )
 
-    def add_to_queue(self, username):
-        """Add a request to the queue and return client_id"""
-        client_id = str(uuid.uuid4())
-        request_data = {
-            "username": username,
+    def  add_to_queue ( self, username ) :
+        "Thêm yêu cầu vào hàng đợi và trả về client_id"""
+        client_id = str ( uuid. uuid4 ( ) )
+        dữ liệu yêu cầu = {
+            "tên người dùng" : tên người dùng,
             "status": "waiting",
             "result": None,
             "error": None,
@@ -396,6 +396,11 @@ def queue_status():
         return jsonify({"success": False, "msg": "Client ID not found"}), 404
 
     return jsonify({"success": True, **status})
+
+def get_client_ip(req):
+    if req.headers.get("X-Forwarded-For"):
+        return req.headers.get("X-Forwarded-For").split(",")[0]
+    return req.remote_addr or "Unknown"
 
 
 if __name__ == "__main__":
