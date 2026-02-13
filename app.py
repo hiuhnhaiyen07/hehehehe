@@ -1,3 +1,4 @@
+from telegram_notify import notify_success, notify_failed
 from flask import Flask, render_template, request, jsonify
 from auth import Auth
 from api import LocketAPI
