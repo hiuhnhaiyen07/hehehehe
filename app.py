@@ -1,56 +1,55 @@
-from telegram_notify import notify_success, notify_failed
 from flask import Flask, render_template, request, jsonify
 from auth import Auth
 from api import LocketAPI
 import json
 import time
 import requests
-hàng đợi nhập
-nhập luồng
-nhập uuid
+import queue
+import threading
+import uuid
 from datetime import datetime
 import dotenv
-nhập khẩu hệ điều hành
+import os
 
-ứng dụng = Flask ( __name__ )
+app = Flask(__name__)
 
-dotenv.load_dotenv ( )​
+dotenv.load_dotenv()
 
-# Khởi tạo API và xác thực
+# Initialize API and Auth
 subscription_ids = [
-    "locket_1600_1y" ,
-    "locket_199_1m" ,
-    "locket_199_1m_only" ,
-    "locket_3600_1y" ,
-    "locket_399_1m_only" ,
+    "locket_1600_1y",
+    "locket_199_1m",
+    "locket_199_1m_only",
+    "locket_3600_1y",
+    "locket_399_1m_only",
 ]
 
-auth = Auth ( os. getenv ( "EMAIL" ) , os. getenv ( "PASSWORD" ) )
-thử :
-    token = auth.get_token ( )
-    api = LocketAPI ( token )
-ngoại trừ Ngoại lệ là e:
-    print ( f"Lỗi khi khởi tạo API: { e } " )
-    API = Không có
+auth = Auth(os.getenv("EMAIL"), os.getenv("PASSWORD"))
+try:
+    token = auth.get_token()
+    api = LocketAPI(token)
+except Exception as e:
+    print(f"Error initializing API: {e}")
+    api = None
 
 
-# Hệ thống quản lý xếp hàng
-Lớp QueueManager:
-    def  __init__ ( self ) :
-        self.queue = queue.Queue ( )​
-        self.lock = threading.Lock ( )​
-        self.client_requests = { } # client_id -> dữ liệu yêu cầu  
-        self.processing_times = [ ] # Theo dõi thời gian xử lý cho các ước tính  
-        self.current_processing = None​
-        self.worker_thread = threading.Thread ( target = self._process_queue , daemon = True )
-        self.worker_thread.start ( )​​​
-        print ( "Trình quản lý hàng đợi đã được khởi tạo và luồng xử lý đã bắt đầu" )
+# Queue Management System
+class QueueManager:
+    def __init__(self):
+        self.queue = queue.Queue()
+        self.lock = threading.Lock()
+        self.client_requests = {}  # client_id -> request data
+        self.processing_times = []  # Track processing times for estimates
+        self.current_processing = None
+        self.worker_thread = threading.Thread(target=self._process_queue, daemon=True)
+        self.worker_thread.start()
+        print("Queue manager initialized and worker thread started")
 
-    def  add_to_queue ( self, username ) :
-        "Thêm yêu cầu vào hàng đợi và trả về client_id"""
-        client_id = str ( uuid. uuid4 ( ) )
-        dữ liệu yêu cầu = {
-            "tên người dùng" : tên người dùng,
+    def add_to_queue(self, username):
+        """Add a request to the queue and return client_id"""
+        client_id = str(uuid.uuid4())
+        request_data = {
+            "username": username,
             "status": "waiting",
             "result": None,
             "error": None,
@@ -229,11 +228,6 @@ Lớp QueueManager:
                     gold_entitlement.get("product_identifier"),
                     restore_result,
                 )
-                notify_success(
-                  username=username,
-                  uid=uid_target,
-                  ip="SERVER"
-                )
 
                 with self.lock:
                     self.client_requests[client_id]["status"] = "completed"
@@ -244,11 +238,6 @@ Lớp QueueManager:
             else:
                 raise Exception(
                     f"Restore purchase failed. Gold entitlement not found for {username}."
-                )
-                notify_failed(
-                  username=username,
-                  error=str(e),
-                  ip="SERVER"
                 )
 
         except Exception as e:
@@ -292,6 +281,126 @@ def get_user_info():
 
     if not username:
         return jsonify({"success": False, "msg": "Username is required"}), 400
+
+    try:
+        # User lookup
+        print(f"Looking up user: {username}")
+        try:
+            account_info = api.getUserByUsername(username)
+        except Exception as e:
+            if "401" in str(e) or "Unauthenticated" in str(e):
+                print(f"Creating new token because of {e}")
+                if refresh_api_token():
+                    account_info = api.getUserByUsername(username)
+                else:
+                    raise e
+            else:
+                raise e
+
+        # Check if we got a valid response structure
+        if not account_info or "result" not in account_info:
+            return jsonify(
+                {"success": False, "msg": "User not found or API error"}
+            ), 404
+
+        user_data = account_info.get("result", {}).get("data")
+        if not user_data:
+            return jsonify({"success": False, "msg": "User data not found"}), 404
+
+        # Extract relevant user information
+        user_info = {
+            "uid": user_data.get("uid"),
+            "username": user_data.get("username"),
+            "first_name": user_data.get("first_name", ""),
+            "last_name": user_data.get("last_name", ""),
+            "profile_picture_url": user_data.get("profile_picture_url", ""),
+        }
+
+        return jsonify({"success": True, "data": user_info})
+
+    except Exception as e:
+        print(f"Error in get user info: {e}")
+        return jsonify({"success": False, "msg": f"An error occurred: {str(e)}"}), 500
+
+
+def send_telegram_notification(username, uid, product_id, raw_json):
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if bot_token == "" or chat_id == "":
+        print("Telegram notification skipped: Token or Chat ID not set.")
+        return
+    subscription_info = json.dumps(
+        raw_json.get("subscriber", {}).get("entitlements", {}).get("Gold", {}), indent=2
+    )
+
+    message = f"✅ <b>Locket Gold Unlocked!</b>\n\n👤 <b>User:</b> {username} ({uid})\n⏰ <b>Time:</b> {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n<b>Subscription Info:</b>\n<pre>{subscription_info}</pre>"
+    # send file json
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
+
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Failed to send Telegram notification: {e}")
+
+
+@app.route("/api/restore", methods=["POST"])
+def restore_purchase():
+    """Add request to queue and return client_id for tracking"""
+    if not api:
+        return jsonify(
+            {"success": False, "msg": "API not initialized. Check server logs."}
+        ), 500
+
+    data = request.json
+    username = data.get("username")
+
+    if not username:
+        return jsonify({"success": False, "msg": "Username is required"}), 400
+
+    try:
+        # Add to queue
+        client_id = queue_manager.add_to_queue(username)
+
+        # Get initial status
+        status = queue_manager.get_status(client_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "client_id": client_id,
+                "position": status["position"],
+                "total_queue": status["total_queue"],
+                "estimated_time": status["estimated_time"],
+            }
+        )
+
+    except Exception as e:
+        print(f"Error adding to queue: {e}")
+        return jsonify({"success": False, "msg": f"An error occurred: {str(e)}"}), 500
+
+
+@app.route("/api/queue/status", methods=["POST"])
+def queue_status():
+    """Get current queue status for a client"""
+    data = request.json
+    client_id = data.get("client_id")
+
+    if not client_id:
+        return jsonify({"success": False, "msg": "client_id is required"}), 400
+
+    status = queue_manager.get_status(client_id)
+
+    if status is None:
+        return jsonify({"success": False, "msg": "Client ID not found"}), 404
+
+    return jsonify({"success": True, **status})
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
+00
 
     try:
         # User lookup
