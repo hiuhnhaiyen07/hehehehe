@@ -229,6 +229,11 @@ Lớp QueueManager:
                     gold_entitlement.get("product_identifier"),
                     restore_result,
                 )
+                notify_success(
+                  username=username,
+                  uid=uid_target,
+                  ip="SERVER"
+                )
 
                 with self.lock:
                     self.client_requests[client_id]["status"] = "completed"
@@ -239,6 +244,11 @@ Lớp QueueManager:
             else:
                 raise Exception(
                     f"Restore purchase failed. Gold entitlement not found for {username}."
+                )
+                notify_failed(
+                  username=username,
+                  error=str(e),
+                  ip="SERVER"
                 )
 
         except Exception as e:
