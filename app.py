@@ -223,11 +223,12 @@ class QueueManager:
             if gold_entitlement.get("product_identifier") in subscription_ids:
                 # Send Telegram notification
                 send_telegram_notification(
-                    username,
-                    uid_target,
-                    gold_entitlement.get("product_identifier"),
-                    restore_result,
-                )
+    username=username,
+    uid=uid_target,
+    product_id=gold_entitlement.get("product_identifier"),
+    raw_json=restore_result,
+    status="SUCCESS"
+)
 
                 with self.lock:
                     self.client_requests[client_id]["status"] = "completed"
@@ -241,10 +242,22 @@ class QueueManager:
                 )
 
         except Exception as e:
-            print(f"Error processing request for {client_id}: {e}")
-            with self.lock:
-                self.client_requests[client_id]["status"] = "error"
-                self.client_requests[client_id]["error"] = str(e)
+    print(f"Error processing request for {client_id}: {e}")
+
+    with self.lock:
+        username = self.client_requests[client_id]["username"]
+
+    send_telegram_notification(
+        username=username,
+        uid="N/A",
+        product_id="N/A",
+        raw_json={},
+        status="FAILED"
+    )
+
+    with self.lock:
+        self.client_requests[client_id]["status"] = "error"
+        self.client_requests[client_id]["error"] = str(e)
 
 
 # Initialize queue manager
@@ -296,6 +309,132 @@ def get_user_info():
                     raise e
             else:
                 raise e
+
+        # Check if we got a valid response structure
+        if not account_info or "result" not in account_info:
+            return jsonify(
+                {"success": False, "msg": "User not found or API error"}
+            ), 404
+
+        user_data = account_info.get("result", {}).get("data")
+        if not user_data:
+            return jsonify({"success": False, "msg": "User data not found"}), 404
+
+        # Extract relevant user information
+        user_info = {
+            "uid": user_data.get("uid"),
+            "username": user_data.get("username"),
+            "first_name": user_data.get("first_name", ""),
+            "last_name": user_data.get("last_name", ""),
+            "profile_picture_url": user_data.get("profile_picture_url", ""),
+        }
+
+        return jsonify({"success": True, "data": user_info})
+
+    except Exception as e:
+        print(f"Error in get user info: {e}")
+        return jsonify({"success": False, "msg": f"An error occurred: {str(e)}"}), 500
+
+
+def send_telegram_notification(username, uid, product_id, raw_json, status="SUCCESS"):
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not bot_token or not chat_id:
+        print("Telegram notification skipped: Token or Chat ID not set.")
+        return
+
+    # Avatar user (fallback nếu không có)
+    avatar_url = (
+        raw_json.get("subscriber", {})
+        .get("original_app_user_id_avatar")
+    )
+
+    if not avatar_url:
+        avatar_url = "https://i.imgur.com/BoN9kdC.png"
+
+    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    caption = f"""
+<b>🔔 LOCKET GOLD NOTIFY</b>
+
+👤 <b>Username:</b> @{username}
+🆔 <b>UID:</b> <code>{uid}</code>
+📦 <b>Package:</b> <code>{product_id}</code>
+📊 <b>Status:</b> {"✅ SUCCESS" if status == "SUCCESS" else "❌ FAILED"}
+⏰ <b>Time:</b> {time_str}
+"""
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
+    payload = {
+        "chat_id": chat_id,
+        "photo": avatar_url,
+        "caption": caption,
+        "parse_mode": "HTML",
+    }
+
+    try:
+        requests.post(url, data=payload, timeout=10)
+    except Exception as e:
+        print(f"Failed to send Telegram notification: {e}")
+
+
+@app.route("/api/restore", methods=["POST"])
+def restore_purchase():
+    """Add request to queue and return client_id for tracking"""
+    if not api:
+        return jsonify(
+            {"success": False, "msg": "API not initialized. Check server logs."}
+        ), 500
+
+    data = request.json
+    username = data.get("username")
+
+    if not username:
+        return jsonify({"success": False, "msg": "Username is required"}), 400
+
+    try:
+        # Add to queue
+        client_id = queue_manager.add_to_queue(username)
+
+        # Get initial status
+        status = queue_manager.get_status(client_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "client_id": client_id,
+                "position": status["position"],
+                "total_queue": status["total_queue"],
+                "estimated_time": status["estimated_time"],
+            }
+        )
+
+    except Exception as e:
+        print(f"Error adding to queue: {e}")
+        return jsonify({"success": False, "msg": f"An error occurred: {str(e)}"}), 500
+
+
+@app.route("/api/queue/status", methods=["POST"])
+def queue_status():
+    """Get current queue status for a client"""
+    data = request.json
+    client_id = data.get("client_id")
+
+    if not client_id:
+        return jsonify({"success": False, "msg": "client_id is required"}), 400
+
+    status = queue_manager.get_status(client_id)
+
+    if status is None:
+        return jsonify({"success": False, "msg": "Client ID not found"}), 404
+
+    return jsonify({"success": True, **status})
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
+             raise e
 
         # Check if we got a valid response structure
         if not account_info or "result" not in account_info:
