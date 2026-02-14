@@ -125,14 +125,15 @@ class QueueManager:
         return int(position * avg_time)
 
     def _process_queue(self):
+        """Background worker to process queue sequentially"""
         print("Queue worker thread started")
         while True:
             try:
+                # Get next client from queue (blocking)
                 client_id = self.queue.get(timeout=1)
 
                 with self.lock:
                     if client_id not in self.client_requests:
-                        self.queue.task_done()
                         continue
 
                     self.current_processing = client_id
@@ -141,22 +142,22 @@ class QueueManager:
 
                 print(f"Processing request for client_id: {client_id}")
 
+                # Process the request
                 self._process_request(client_id)
 
+                # Mark as complete
                 with self.lock:
                     self.current_processing = None
-
-                    if (
-                        client_id in self.client_requests
-                        and self.client_requests[client_id]["status"] != "processing"
-                    ):
+                    if client_id in self.client_requests:
                         self.client_requests[client_id]["completed_at"] = datetime.now()
 
+                        # Calculate processing time
                         started = self.client_requests[client_id]["started_at"]
                         completed = self.client_requests[client_id]["completed_at"]
                         duration = (completed - started).total_seconds()
-
                         self.processing_times.append(duration)
+
+                        # Keep only last 20 times
                         if len(self.processing_times) > 20:
                             self.processing_times.pop(0)
 
@@ -169,53 +170,86 @@ class QueueManager:
                 with self.lock:
                     self.current_processing = None
 
-
     def _process_request(self, client_id):
+        """Process a single restore purchase request"""
         try:
             with self.lock:
                 username = self.client_requests[client_id]["username"]
 
-            account_info = api.getUserByUsername(username)
-            user_data = account_info["result"]["data"]
-            uid_target = user_data["uid"]
+            print(f"Processing restore for: {username}")
 
-            restore_result = api.restorePurchase(uid_target)
+            # User lookup
+            try:
+                account_info = api.getUserByUsername(username)
+            except Exception as e:
+                if "401" in str(e) or "Unauthenticated" in str(e):
+                    print(f"Creating new token because of {e}")
+                    if refresh_api_token():
+                        account_info = api.getUserByUsername(username)
+                    else:
+                        raise e
+                else:
+                    raise e
 
+            # Check if we got a valid response structure
+            if not account_info or "result" not in account_info:
+                raise Exception("User not found or API error")
+
+            user_data = account_info.get("result", {}).get("data")
+            if not user_data:
+                raise Exception("User data not found")
+
+            uid_target = user_data.get("uid")
+            if not uid_target:
+                raise Exception("UID not found for user")
+
+            # Restore purchase
+            try:
+                restore_result = api.restorePurchase(uid_target)
+            except Exception as e:
+                if "401" in str(e) or "Unauthenticated" in str(e):
+                    print(f"Creating new token because of {e}")
+                    if refresh_api_token():
+                        restore_result = api.restorePurchase(uid_target)
+                    else:
+                        raise e
+                else:
+                    raise e
+
+            # Check entitlement
             entitlements = restore_result.get("subscriber", {}).get("entitlements", {})
-            gold = entitlements.get("Gold", {})
+            gold_entitlement = entitlements.get("Gold", {})
 
-            if gold.get("product_identifier") in subscription_ids:
+            if gold_entitlement.get("product_identifier") in subscription_ids:
+                # Send Telegram notification
                 send_telegram_notification(
-                    username=username,
-                    uid=uid_target,
-                    product_id=gold.get("product_identifier"),
-                    raw_json=restore_result,
-                    status="SUCCESS",
+                    username,
+                    uid_target,
+                    gold_entitlement.get("product_identifier"),
+                    restore_result,
                 )
 
                 with self.lock:
                     self.client_requests[client_id]["status"] = "completed"
                     self.client_requests[client_id]["result"] = {
                         "success": True,
-                        "product_id": gold.get("product_identifier"),
+                        "msg": f"Purchase {gold_entitlement.get('product_identifier')} for {username} successfully!",
                     }
             else:
-                raise Exception("Gold not found")
+                raise Exception(
+                    f"Restore purchase failed. Gold entitlement not found for {username}."
+                )
 
         except Exception as e:
-            send_telegram_notification(
-                username=username,
-                uid="N/A",
-                product_id="N/A",
-                raw_json={},
-                status="FAILED",
-            )
-
+            print(f"Error processing request for {client_id}: {e}")
             with self.lock:
                 self.client_requests[client_id]["status"] = "error"
                 self.client_requests[client_id]["error"] = str(e)
-                
+
+
+# Initialize queue manager
 queue_manager = QueueManager()
+
 
 def refresh_api_token():
     global api
@@ -289,22 +323,84 @@ def get_user_info():
         return jsonify({"success": False, "msg": f"An error occurred: {str(e)}"}), 500
 
 
-def send_telegram_notification(username, uid, product_id, raw_json, status="SUCCESS"):
+def send_telegram_notification(username, uid, product_id, raw_json):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-    if not bot_token or not chat_id:
+    if bot_token == "" or chat_id == "":
         print("Telegram notification skipped: Token or Chat ID not set.")
         return
-
-    # Avatar user (fallback nếu không có)
-    avatar_url = (
-        raw_json.get("subscriber", {})
-        .get("original_app_user_id_avatar")
+    subscription_info = json.dumps(
+        raw_json.get("subscriber", {}).get("entitlements", {}).get("Gold", {}), indent=2
     )
 
-    if not avatar_url:
-        avatar_url = "https://i.imgur.com/BoN9kdC.png"
+    message = f"✅ <b>Locket Gold Unlocked!</b>\n\n👤 <b>User:</b> {username} ({uid})\n⏰ <b>Time:</b> {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n<b>Subscription Info:</b>\n<pre>{subscription_info}</pre>"
+    # send file json
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
+
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Failed to send Telegram notification: {e}")
+
+
+@app.route("/api/restore", methods=["POST"])
+def restore_purchase():
+    """Add request to queue and return client_id for tracking"""
+    if not api:
+        return jsonify(
+            {"success": False, "msg": "API not initialized. Check server logs."}
+        ), 500
+
+    data = request.json
+    username = data.get("username")
+
+    if not username:
+        return jsonify({"success": False, "msg": "Username is required"}), 400
+
+    try:
+        # Add to queue
+        client_id = queue_manager.add_to_queue(username)
+
+        # Get initial status
+        status = queue_manager.get_status(client_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "client_id": client_id,
+                "position": status["position"],
+                "total_queue": status["total_queue"],
+                "estimated_time": status["estimated_time"],
+            }
+        )
+
+    except Exception as e:
+        print(f"Error adding to queue: {e}")
+        return jsonify({"success": False, "msg": f"An error occurred: {str(e)}"}), 500
+
+
+@app.route("/api/queue/status", methods=["POST"])
+def queue_status():
+    """Get current queue status for a client"""
+    data = request.json
+    client_id = data.get("client_id")
+
+    if not client_id:
+        return jsonify({"success": False, "msg": "client_id is required"}), 400
+
+    status = queue_manager.get_status(client_id)
+
+    if status is None:
+        return jsonify({"success": False, "msg": "Client ID not found"}), 404
+
+    return jsonify({"success": True, **status})
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
+ur.com/BoN9kdC.png"
 
     time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
