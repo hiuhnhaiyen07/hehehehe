@@ -73,19 +73,21 @@
         0 25px 50px rgba(15, 42, 29, 0.6),
         inset 0 0 0 1px rgba(227,238,212,0.05);
     position: relative;
+    overflow: hidden; /* 🔥 FIX TRÀN NGANG */
 }
 
-        .container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
-        }
+.container::before {
+    content: '';
+    position: absolute;
+    inset: -50%; /* thay cho top/left/width/height */
+    background: radial-gradient(
+        circle,
+        rgba(255, 215, 0, 0.1) 0%,
+        transparent 70%
+    );
+    pointer-events: none;
+    z-index: 0;
+}
 
         h1 {
     font-size: 2.2rem;
@@ -551,26 +553,6 @@
     margin-top: 0.3rem;
     opacity: 0.6;
 }
-        /* FIX SWEETALERT CENTER ON MOBILE */
-.swal2-container {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 16px !important;
-}
-
-.swal2-popup {
-    margin: 0 !important;
-    left: auto !important;
-    right: auto !important;
-    transform: none !important;
-}
-        @media (max-width: 768px) {
-    .swal2-popup {
-        width: 100% !important;
-        max-width: 340px !important;
-    }
-        }
     </style>
 </head>
 
