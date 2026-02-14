@@ -551,6 +551,26 @@
     margin-top: 0.3rem;
     opacity: 0.6;
 }
+        /* FIX SWEETALERT CENTER ON MOBILE */
+.swal2-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+}
+
+.swal2-popup {
+    margin: 0 !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+}
+        @media (max-width: 768px) {
+    .swal2-popup {
+        width: 100% !important;
+        max-width: 340px !important;
+    }
+        }
     </style>
 </head>
 
