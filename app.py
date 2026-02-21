@@ -1,3 +1,20 @@
+from flask import Flask, render_template, request, jsonify
+from auth import Auth
+from api import LocketAPI
+import json
+import time
+import requests
+import queue
+import threading
+import uuid
+from datetime import datetime
+import dotenv
+import os
+
+app = Flask(__name__)
+
+dotenv.load_dotenv()
+
 import sqlite3
 
 def get_db():
@@ -18,70 +35,13 @@ CREATE TABLE IF NOT EXISTS orders (
 )
 """)
 db.commit()
+
 PLANS = {
     "1m": {"label": "1 tháng", "amount": 5000},
     "3m": {"label": "3 tháng", "amount": 12000},
     "1y": {"label": "1 năm", "amount": 30000},
     "life": {"label": "vĩnh viễn", "amount": 50000},
 }
-from flask import Flask, render_template, request, jsonify
-from auth import Auth
-from api import LocketAPI
-import json
-import time
-import requests
-import queue
-import threading
-import uuid
-from datetime import datetime
-import dotenv
-import os
-import hmac, hashlib, os
-
-def verify_sepay_signature(raw_body, signature):
-    secret = os.getenv("SEPAY_SECRET", "").encode()
-    expected = hmac.new(secret, raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
-
-@app.route("/api/sepay-webhook", methods=["POST"])
-def sepay_webhook():
-    raw_body = request.data
-    signature = request.headers.get("X-Signature", "").replace("sha256=", "")
-
-    if not verify_sepay_signature(raw_body, signature):
-        return jsonify(ok=False), 403
-
-    payload = request.json
-    amount = int(payload.get("amount", 0))
-    content = payload.get("description", "")
-
-    if "GOLD" not in content:
-        return jsonify(ok=True)
-
-    order_id = content.strip().split()[-1]
-
-    order = db.execute(
-        "SELECT * FROM orders WHERE id=? AND status='pending'",
-        (order_id,)
-    ).fetchone()
-
-    if not order or amount < order["amount"]:
-        return jsonify(ok=True)
-
-    db.execute(
-        "UPDATE orders SET status='paid' WHERE id=?",
-        (order_id,)
-    )
-    db.commit()
-
-    # 👉 SAU KHI THANH TOÁN, MUỐN LÀM GÌ THÌ GỌI Ở ĐÂY
-    # process_paid_order(order["username"], order["plan"])
-
-    return jsonify(ok=True)
-
-app = Flask(__name__)
-
-dotenv.load_dotenv()
 
 # Initialize API and Auth
 subscription_ids = [
@@ -331,6 +291,13 @@ def refresh_api_token():
         print(f"Failed to refresh API token: {e}")
         return False
 
+import hmac
+import hashlib
+
+def verify_sepay_signature(raw_body, signature):
+    secret = os.getenv("SEPAY_SECRET", "").encode()
+    expected = hmac.new(secret, raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
 
 @app.route("/")
 def index():
@@ -412,14 +379,42 @@ def send_telegram_notification(username, uid, product_id, raw_json):
     except Exception as e:
         print(f"Failed to send Telegram notification: {e}")
 
+@app.route("/api/create-order", methods=["POST"])
+def create_order():
+    data = request.json
+    username = data.get("username")
+    plan = data.get("plan")
 
+    if not username or plan not in PLANS:
+        return jsonify(success=False, message="Dữ liệu không hợp lệ")
+
+    order_id = str(uuid.uuid4()).split("-")[0].upper()
+    amount = PLANS[plan]["amount"]
+
+    db.execute(
+        "INSERT INTO orders VALUES (?,?,?,?,?,?)",
+        (order_id, username, plan, amount, "pending", datetime.now().isoformat())
+    )
+    db.commit()
+
+    return jsonify(
+        success=True,
+        order_id=order_id,
+        amount=amount,
+        bank={
+            "bank": "MB BANK",
+            "account_name": "LE KIM YEN",
+            "account_number": "610793",
+            "content": f"GOLD {order_id}"
+        }
+    )
+    
 @app.route("/api/restore", methods=["POST"])
 def restore_purchase():
-    """Add request to queue and return client_id for tracking"""
-    if not api:
-        return jsonify(
-            {"success": False, "msg": "API not initialized. Check server logs."}
-        ), 500
+    # API này đã bị khoá để tránh bypass thanh toán
+    return jsonify(
+        {"success": False, "msg": "Vui lòng thanh toán trước"}
+    ), 403
 
     data = request.json
     username = data.get("username")
@@ -465,39 +460,42 @@ def queue_status():
 
     return jsonify({"success": True, **status})
 
-from flask import request, jsonify
-import uuid
-from datetime import datetime
+@app.route("/api/sepay-webhook", methods=["POST"])
+def sepay_webhook():
+    raw_body = request.data
+    signature = request.headers.get("X-Signature", "").replace("sha256=", "")
 
-@app.route("/api/create-order", methods=["POST"])
-def create_order():
-    data = request.json
-    username = data.get("username")
-    plan = data.get("plan")
+    if not verify_sepay_signature(raw_body, signature):
+        return jsonify(ok=False), 403
 
-    if not username or plan not in PLANS:
-        return jsonify(success=False, message="Dữ liệu không hợp lệ")
+    payload = request.json
+    amount = int(payload.get("amount", 0))
+    content = payload.get("description", "")
 
-    order_id = str(uuid.uuid4()).split("-")[0].upper()
-    amount = PLANS[plan]["amount"]
+    if "GOLD" not in content:
+        return jsonify(ok=True)
+
+    order_id = content.strip().split()[-1]
+
+    order = db.execute(
+        "SELECT * FROM orders WHERE id=? AND status='pending'",
+        (order_id,)
+    ).fetchone()
+
+    if not order or amount < order["amount"]:
+        return jsonify(ok=True)
 
     db.execute(
-        "INSERT INTO orders VALUES (?,?,?,?,?,?)",
-        (order_id, username, plan, amount, "pending", datetime.now().isoformat())
+        "UPDATE orders SET status='paid' WHERE id=?",
+        (order_id,)
     )
     db.commit()
 
-    return jsonify(
-        success=True,
-        order_id=order_id,
-        amount=amount,
-        bank={
-            "bank": "MB BANK",
-            "account_name": "LE KIM YEN",
-            "account_number": "610793",
-            "content": f"GOLD {order_id}"
-        }
-    )
+    # ✅ CHỖ DUY NHẤT CHO VÀO QUEUE
+    queue_manager.add_to_queue(order["username"])
 
+    return jsonify(ok=True)
+    
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+    
