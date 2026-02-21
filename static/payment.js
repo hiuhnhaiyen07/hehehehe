@@ -1,19 +1,9 @@
-// static/payment.js
-
 async function activateLocket() {
   const username = document.getElementById("username-input")?.value?.trim();
-  const planEl = document.querySelector(".plan-card.selected");
+  const plan = document.getElementById("plan")?.value;
 
-  if (!username || !planEl) {
-    alert("Nhập username và chọn gói");
-    return;
-  }
-
-  const onclick = planEl.getAttribute("onclick");
-  const plan = onclick.match(/'(.+?)'/)?.[1];
-
-  if (!plan) {
-    alert("Không xác định được gói");
+  if (!username || !plan) {
+    alert("Vui lòng nhập username và chọn gói");
     return;
   }
 
@@ -37,12 +27,12 @@ async function activateLocket() {
     <div id="qr-popup" style="
       position:fixed; inset:0; background:rgba(0,0,0,.6);
       display:flex; align-items:center; justify-content:center; z-index:9999">
-      <div style="background:#fff;padding:20px;border-radius:10px;text-align:center">
+      <div style="background:#fff;padding:20px;border-radius:10px;text-align:center;max-width:320px">
         <h3>Quét QR để thanh toán</h3>
         <p><b>MB Bank</b></p>
         <p><b>${data.amount.toLocaleString()}đ</b></p>
         <p>Nội dung: <code>${data.bank.content}</code></p>
-        <img src="${qrUrl}" />
+        <img src="${qrUrl}" style="width:250px;height:250px"/>
         <br/><br/>
         <button onclick="document.getElementById('qr-popup').remove()">Đóng</button>
       </div>
