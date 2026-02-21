@@ -423,6 +423,39 @@ def queue_status():
 
     return jsonify({"success": True, **status})
 
+from flask import request, jsonify
+import uuid
+from datetime import datetime
+
+@app.route("/api/create-order", methods=["POST"])
+def create_order():
+    data = request.json
+    username = data.get("username")
+    plan = data.get("plan")
+
+    if not username or plan not in PLANS:
+        return jsonify(success=False, message="Dữ liệu không hợp lệ")
+
+    order_id = str(uuid.uuid4()).split("-")[0].upper()
+    amount = PLANS[plan]["amount"]
+
+    db.execute(
+        "INSERT INTO orders VALUES (?,?,?,?,?,?)",
+        (order_id, username, plan, amount, "pending", datetime.now().isoformat())
+    )
+    db.commit()
+
+    return jsonify(
+        success=True,
+        order_id=order_id,
+        amount=amount,
+        bank={
+            "bank": "MB BANK",
+            "account_name": "LE KIM YEN",
+            "account_number": "610793",
+            "content": f"GOLD {order_id}"
+        }
+    )
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
