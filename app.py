@@ -408,21 +408,6 @@ def create_order():
             "content": f"GOLD {order_id}"
         }
     )
-
-@app.route("/api/order-status", methods=["POST"])
-def order_status():
-    data = request.json
-    order_id = data.get("order_id")
-
-    order = db.execute(
-        "SELECT status FROM orders WHERE id=?",
-        (order_id,)
-    ).fetchone()
-
-    if not order:
-        return jsonify(success=False)
-
-    return jsonify(success=True, status=order["status"])
     
 @app.route("/api/restore", methods=["POST"])
 def restore_purchase():
@@ -477,7 +462,6 @@ def queue_status():
 
 @app.route("/api/sepay-webhook", methods=["POST"])
 def sepay_webhook():
-    print("Webhook received:", request.json)
     raw_body = request.data
     signature = request.headers.get("X-Signature", "").replace("sha256=", "")
 
