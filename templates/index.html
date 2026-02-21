@@ -10,48 +10,32 @@
     <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
     <style>
         :root {
-    /* CORE COLORS */
-    --dark-1: #0F2A1D;
-    --dark-2: #375534;
-    --mid: #6B9071;
-    --light: #AEC3B0;
-    --bg-soft: #E3EED4;
-
-    /* SEMANTIC */
-    --bg-main: #0F2A1D;
-    --bg-card: rgba(55, 85, 52, 0.75);
-
-    --text-main: #E3EED4;
-    --text-secondary: #AEC3B0;
-    --text-muted: #6B9071;
-
-    --glass-border: 1px solid rgba(227, 238, 212, 0.15);
-
-    --primary-gradient: linear-gradient(
-        135deg,
-        #AEC3B0 0%,
-        #6B9071 50%,
-        #375534 100%
-    );
-}
+            --primary-gradient: linear-gradient(135deg, #FFD700 0%, #FDB931 100%);
+            --bg-color: #0f0f0f;
+            --card-bg: rgba(30, 30, 30, 0.6);
+            --text-color: #ffffff;
+            --text-secondary: #a0a0a0;
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+        }
 
         body {
-    font-family: 'Outfit', sans-serif;
-    background:
-        radial-gradient(circle at top left, #375534, transparent 45%),
-        radial-gradient(circle at bottom right, #6B9071, transparent 50%),
-        var(--bg-main);
-    color: var(--text-main);
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    overflow-x: hidden;
-}
-
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
 
         .main-wrapper {
             width: 100%;
@@ -64,50 +48,49 @@
         }
 
         .container {
-    background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    border-radius: 24px;
-    border: var(--glass-border);
-    padding: 2.8rem 2.2rem;
-    box-shadow:
-        0 25px 50px rgba(15, 42, 29, 0.6),
-        inset 0 0 0 1px rgba(227,238,212,0.05);
-    position: relative;
-    overflow: hidden; /* 🔥 FIX TRÀN NGANG */
-}
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            border: var(--glass-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
 
-.container::before {
-    content: '';
-    position: absolute;
-    inset: -50%; /* thay cho top/left/width/height */
-    background: radial-gradient(
-        circle,
-        rgba(255, 215, 0, 0.1) 0%,
-        transparent 70%
-    );
-    pointer-events: none;
-    z-index: 0;
-}
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
 
         h1 {
-    font-size: 2.2rem;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    background: linear-gradient(
-        135deg,
-        #E3EED4,
-        #AEC3B0,
-        #6B9071
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
+        }
 
-        .subtitle {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-bottom: 2.2rem;
-}
+        p.subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+            position: relative;
+            z-index: 1;
+        }
 
         .form-group {
             margin-bottom: 1.5rem;
@@ -147,20 +130,20 @@
         }
 
         button {
-    width: 100%;
-    padding: 1rem;
-    font-size: 1rem;
-
-    position: relative;
-    overflow: hidden;
-    border-radius: 16px;
-    background: var(--primary-gradient);
-    color: #0F2A1D;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-
-    box-shadow: 0 12px 30px rgba(15, 42, 29, 0.5);
-}
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary-gradient);
+            color: #000;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
 
         button:hover {
             transform: translateY(-2px);
@@ -179,12 +162,14 @@
 
         /* Instructions Card */
         .instructions {
-    background: rgba(174, 195, 176, 0.08);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    border: var(--glass-border);
-    color: var(--text-secondary);
-}
+            background: rgba(20, 20, 20, 0.4);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: var(--glass-border);
+            text-align: left;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
 
         .instructions h3 {
             color: #fff;
@@ -208,12 +193,16 @@
 
         /* Note Card */
         .note {
-    background: rgba(227, 238, 212, 0.12);
-    border: 1px solid rgba(174, 195, 176, 0.4);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    color: var(--text-secondary);
-}
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: left;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 0px;
+            /* Spacing handled by gap in main-wrapper */
+        }
 
         .note h3 {
             color: #FFD700;
@@ -457,238 +446,26 @@
                 background-position: 200% center;
             }
         }
-        .site-header {
-    width: 100%;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(15, 42, 29, 0.6);
-    backdrop-filter: blur(12px);
-    border-bottom: var(--glass-border);
-}
-
-.header-inner {
-    max-width: 520px;
-    margin: 0 auto;
-    padding: 1rem 1.2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: var(--text-main);
-}
-
-.logo span {
-    color: var(--light);
-}
-
-.support-link {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.9rem;
-    border-radius: 999px;
-    background: rgba(174,195,176,0.15);
-    border: var(--glass-border);
-    color: var(--text-main);
-    text-decoration: none;
-}
-.support-card {
-    background: rgba(174, 195, 176, 0.12);
-    border-radius: 20px;
-    padding: 1.6rem;
-    border: var(--glass-border);
-    text-align: center;
-    color: var(--text-secondary);
-}
-
-.support-card h3 {
-    margin-bottom: 0.4rem;
-    font-size: 1.1rem;
-    color: var(--text-main);
-}
-
-.support-card p {
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-}
-
-.support-actions {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 0.8rem;
-}
-
-.support-actions a {
-    padding: 0.6rem 1.2rem;
-    border-radius: 999px;
-    background: var(--primary-gradient);
-    color: #0F2A1D;
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-decoration: none;
-}
-
-.support-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-.site-footer {
-    margin-top: 2rem;
-    padding: 1.5rem 1rem;
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.site-footer a {
-    color: var(--light);
-    text-decoration: none;
-}
-
-.footer-note {
-    margin-top: 0.3rem;
-    opacity: 0.6;
-}
-select{
-  width:100%;
-  margin-top:14px;
-  padding:14px;
-  border-radius:14px;
-  border:1px solid var(--stroke);
-  background:rgba(0,0,0,.35);
-  color:var(--text);
-  font-size:1rem;
-  appearance:none;
-  cursor:pointer;
-}
-
-select:focus{
-  outline:none;
-  border-color:var(--gold);
-  box-shadow:0 0 0 3px var(--gold-soft);
-}
-.select-wrapper{
-  position:relative;
-  margin-top:14px;
-}
-
-.select-wrapper::after{
-  content:"▼";
-  position:absolute;
-  right:16px;
-  top:50%;
-  transform:translateY(-50%);
-  color:var(--muted);
-  font-size:.7rem;
-  pointer-events:none;
-}
-/* PRICE CARD */
-.price-card{
-  margin-top: 1.8rem;
-  padding: 1.4rem;
-  border-radius: 18px;
-  background: rgba(174,195,176,0.12);
-  border: var(--glass-border);
-  box-shadow: inset 0 0 0 1px rgba(227,238,212,0.05);
-}
-
-.price-card label{
-  display:block;
-  font-size:.75rem;
-  letter-spacing:1px;
-  text-transform:uppercase;
-  color: var(--text-muted);
-  margin-bottom:.6rem;
-}
-
-.price-select select{
-  width:100%;
-  padding:1rem 1rem;
-  border-radius:14px;
-  border:1px solid rgba(227,238,212,0.25);
-  background: rgba(15,42,29,0.55);
-  color: var(--text-main);
-  font-size:1rem;
-  font-weight:600;
-  appearance:none;
-}
-
-.price-select::after{
-  content:"▾";
-  position:absolute;
-  right:16px;
-  top:50%;
-  transform:translateY(-50%);
-  color: var(--light);
-  font-size:.8rem;
-  pointer-events:none;
-}
-
-.price-select select:focus{
-  outline:none;
-  border-color:#FFD700;
-  box-shadow:0 0 0 3px rgba(255,215,0,0.15);
-}
-
-.price-hint{
-  margin-top:.6rem;
-  font-size:.75rem;
-  color: var(--text-muted);
-  text-align:right;
-}
-.price-card{
-  margin-top: 1.8rem;
-  margin-bottom: 1.6rem; /* 👈 thêm dòng này */
-  padding: 1.4rem;
-  border-radius: 18px;
-  background: rgba(174,195,176,0.12);
-  border: var(--glass-border);
-  box-shadow: inset 0 0 0 1px rgba(227,238,212,0.05);
-}
     </style>
 </head>
-
-<header class="site-header">
-    <div class="header-inner">
-        <div class="logo">
-            Locket <span>Gold</span>
-        </div>
-        <a href="#support" class="support-link">Hỗ trợ</a>
-    </div>
-</header>
 
 <body>
 
     <div class="main-wrapper">
         <div class="container">
-            <h1>Locket Gold</h1>
+            <h1>Locket Gold - HẢI YẾN</h1>
             <p class="subtitle">Mở Khoá Gold Với Usename</p>
 
             <div class="form-group">
                 <label for="username">Tên Người Dùng</label>
                 <input type="text" id="username" placeholder="Nhập Tên Người Dùng..." required autocomplete="off">
             </div>
-            
-            <div class="price-card">
-  <label>Gói Gold</label>
-  <div class="select-wrapper price-select">
-    <select id="plan">
-      <option value="1m">1 tháng · 5.000đ</option>
-      <option value="3m">3 tháng · 12.000đ</option>
-      <option value="1y">1 năm · 30.000đ</option>
-      <option value="life">Vĩnh viễn · 50.000đ</option>
-    </select>
-  </div>
-  <div class="price-hint">Giá kích hoạt Gold</div>
-</div>
 
-            <button onclick="createOrder()">Kích hoạt</button>
+            <button id="submitBtn" onclick="checkUserInfo()">
+                <span class="btn-text">Unlock Gold</span>
+                <div class="loader" id="loader"></div>
+            </button>
         </div>
-        
 
         <div class="instructions">
             <h3>
@@ -750,34 +527,10 @@ select:focus{
             </ul>
         </div>
     </div>
-    
-    <div id="support" class="support-card">
-    <h3>Cần hỗ trợ?</h3>
-    <p>
-        Nếu bạn gặp lỗi không lên Gold, treo hàng đợi
-        hoặc không tìm thấy tài khoản, hãy liên hệ:
-    </p>
 
-    <div class="support-actions">
-        <a href="https://www.facebook.com/share/18ULhHkN3S/" target="_blank">FACEBOOK</a>
-        <a href="https://zalo.me/0783993549">ZALO</a>
-    </div>
-
-    <p class="support-time">
-        Thời gian hỗ trợ: 08:00 – 22:00
-    </p>
-</div>
-    
-
-    <footer class="site-footer">
-    <p>
-        © 2026 Locket Gold •
-        <a href="https://tumadam.io.vn" target="_blank">CHAU DIEP ANH</a>
-    </p>
-    <p class="footer-note">
-        Educational purpose only
-    </p>
-</footer>
+    <footer>
+        Created with by <a href="https://tumadam.io.vn" target="_blank">CHAU DIEP ANH</a>
+    </footer>
 
     <!-- SweetAlert2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -1114,59 +867,7 @@ select:focus{
             }
         });
     </script>
-<script>
-async function createOrder() {
-  const username = document.getElementById("username").value.trim();
-  const plan = document.getElementById("plan").value;
 
-  if (!username || !plan) {
-    alert("Nhập username và chọn gói");
-    return;
-  }
-
-  const res = await fetch("/api/create-order", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ username, plan })
-  });
-
-  const data = await res.json();
-  if (!data.success) {
-    alert(data.message || "Tạo đơn thất bại");
-    return;
-  }
-
-  const qrText = `MB|${data.bank.account_number}|${data.amount}|${data.bank.content}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrText)}`;
-
-  document.body.insertAdjacentHTML("beforeend", `
-    <div id="qr-popup" style="
-      position:fixed; inset:0;
-      background:rgba(0,0,0,.7);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-    ">
-      <div style="
-        background:#fff;
-        padding:20px;
-        border-radius:12px;
-        text-align:center;
-        max-width:320px;
-      ">
-        <h3>Quét QR để thanh toán</h3>
-        <p><b>MB BANK</b></p>
-        <p>Số tiền: <b>${data.amount.toLocaleString()}đ</b></p>
-        <p>Nội dung:<br><code>${data.bank.content}</code></p>
-        <img src="${qrUrl}" style="margin:10px 0;width:250px;height:250px">
-        <br>
-        <button onclick="document.getElementById('qr-popup').remove()">Đóng</button>
-      </div>
-    </div>
-  `);
-}
-      </script>
-<script src="/static/payment.js"></script>
 </body>
+
 </html>
