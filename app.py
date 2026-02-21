@@ -36,6 +36,48 @@ import uuid
 from datetime import datetime
 import dotenv
 import os
+import hmac, hashlib, os
+
+def verify_sepay_signature(raw_body, signature):
+    secret = os.getenv("SEPAY_SECRET", "").encode()
+    expected = hmac.new(secret, raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+@app.route("/api/sepay-webhook", methods=["POST"])
+def sepay_webhook():
+    raw_body = request.data
+    signature = request.headers.get("X-Signature", "").replace("sha256=", "")
+
+    if not verify_sepay_signature(raw_body, signature):
+        return jsonify(ok=False), 403
+
+    payload = request.json
+    amount = int(payload.get("amount", 0))
+    content = payload.get("description", "")
+
+    if "GOLD" not in content:
+        return jsonify(ok=True)
+
+    order_id = content.strip().split()[-1]
+
+    order = db.execute(
+        "SELECT * FROM orders WHERE id=? AND status='pending'",
+        (order_id,)
+    ).fetchone()
+
+    if not order or amount < order["amount"]:
+        return jsonify(ok=True)
+
+    db.execute(
+        "UPDATE orders SET status='paid' WHERE id=?",
+        (order_id,)
+    )
+    db.commit()
+
+    # 👉 SAU KHI THANH TOÁN, MUỐN LÀM GÌ THÌ GỌI Ở ĐÂY
+    # process_paid_order(order["username"], order["plan"])
+
+    return jsonify(ok=True)
 
 app = Flask(__name__)
 
