@@ -1,3 +1,29 @@
+import sqlite3
+
+def get_db():
+    conn = sqlite3.connect("orders.db", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+db = get_db()
+
+db.execute("""
+CREATE TABLE IF NOT EXISTS orders (
+  id TEXT PRIMARY KEY,
+  username TEXT,
+  plan TEXT,
+  amount INTEGER,
+  status TEXT,
+  created_at TEXT
+)
+""")
+db.commit()
+PLANS = {
+    "1m": {"label": "1 tháng", "amount": 5000},
+    "3m": {"label": "3 tháng", "amount": 12000},
+    "1y": {"label": "1 năm", "amount": 30000},
+    "life": {"label": "vĩnh viễn", "amount": 50000},
+}
 from flask import Flask, render_template, request, jsonify
 from auth import Auth
 from api import LocketAPI
