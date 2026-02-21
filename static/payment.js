@@ -26,10 +26,7 @@ async function createOrder() {
     return;
   }
 
-  const qrData = `MB|${data.bank.account_number}|${data.amount}|${data.bank.content}`;
-  const qrUrl =
-    "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" +
-    encodeURIComponent(qrData);
+  const qrUrl = `https://img.vietqr.io/image/MB-${data.bank.account_number}-compact.png?amount=${data.amount}&addInfo=${encodeURIComponent(data.bank.content)}&accountName=${encodeURIComponent(data.bank.account_name)}`;
 
   document.body.insertAdjacentHTML("beforeend", `
     <div style="
